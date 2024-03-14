@@ -39,11 +39,7 @@ public class GameManager : MonoBehaviour
     public  void Update()
     {
         SelectedBlocked();
-        // if (Input.GetKeyDown(KeyCode.A))
-        // {
-        //     int[,] clonedMatrix = CloneMatrix(grid);
-        //     FindInEachId(3, ref clonedMatrix);
-        // }
+
         if (Input.GetKeyDown(KeyCode.E))
         {
             ExportBtnClick();
@@ -102,66 +98,114 @@ public class GameManager : MonoBehaviour
 
     private int _numberDragBlocks = 0;
     private int _columDragId = 0;
-    private int _colorDragId = 0;
     void DragBlocks(int i, int j)
     {
         List<int> kk = new List<int>();
         kk.Add(i);
         _columDragId = j;
-        _colorDragId = grid[i, j];
         
         for (int k = i -1; k >= 0; k--)
         {
-            if (grid[k, j] != grid[i, j])
+            if (grid[k, j] == grid[i, j])
             {
-                break;
+                kk.Add(k);
             }
             else
             {
-                kk.Add(k);
+               break;
             }
         }
 
         _numberDragBlocks = kk.Count;
-        
+
+        List<GameObject> dragObject = new List<GameObject>();
         for (int k = 0; k < kk.Count; k++)
         {
             int temp = grid[kk[k], j];
+            GameObject objectTemp = gridObject[kk[k], j];
+            dragObject.Add(objectTemp);
             
             grid[kk[k], j] = 0;
+            gridObject[kk[k], j] = gridObject[29 - k, j];
+            ChangPosition(kk[k], j);
             
-            ChangeTileColor(kk[k], j);
+
             
             grid[29 - k, j] = temp;
+            gridObject[29 - k, j] = objectTemp;
+            ChangPosition(29 - k, j);
+
             
-            ChangeTileColor(29 - k, j);
+    
         }
-        
+
+        CheckListContainsInList(dragObject);
+
     }
     void DropBlocks(int i, int j)
     {
-        //ClearColor in Drag
-        for (int k = 0; k < _numberDragBlocks; k++)
+        if (j != _columDragId)
         {
-            grid[29 - k, _columDragId] = 0;
-            ChangeTileColor(29 - k, _columDragId);
-        }
-        //Drop
-        for (int k = i + 1; k <= i + _numberDragBlocks; k++)
-        {
-            grid[k, j] = _colorDragId;
-            ChangeTileColor(k,j);
-        }
+            int curentChainBlocks = 1;
+        
+            for (int k = i + 1; k <= i + _numberDragBlocks; k++)
+            {
+                GameObject objectTemp = gridObject[k, j] ;
+            
+                grid[k, j] = grid[29 - (_numberDragBlocks - curentChainBlocks), _columDragId];
+                gridObject[k, j] = gridObject[29 - (_numberDragBlocks - curentChainBlocks), _columDragId];
+                ChangPosition(k,j);
+            
+                grid[29 - (_numberDragBlocks - curentChainBlocks), _columDragId] = 0;
+                gridObject[29 - (_numberDragBlocks - curentChainBlocks), _columDragId] = objectTemp;
+                ChangPosition(29 - (_numberDragBlocks - curentChainBlocks), _columDragId);
+            
+                curentChainBlocks++;
 
+                //ChangeTileColor(k,j);
+            }
+            CreateGruopBlocks(false);
+        }
+        else
+        {
+            int curentChainBlocks = 1;
+
+            for (int k = 29 - _numberDragBlocks; k >= 0; k--)
+            {
+                if (grid[k, j] != 0)
+                {
+                    i = k; // hang
+                    break;
+                }
+            }
+            for (int k = i + 1; k <= i + _numberDragBlocks; k++)
+            {
+                GameObject objectTemp = gridObject[k, j] ;
+            
+                grid[k, j] = grid[29 - (_numberDragBlocks - curentChainBlocks), _columDragId];
+                gridObject[k, j] = gridObject[29 - (_numberDragBlocks - curentChainBlocks), _columDragId];
+                ChangPosition(k,j);
+            
+                grid[29 - (_numberDragBlocks - curentChainBlocks), _columDragId] = 0;
+                gridObject[29 - (_numberDragBlocks - curentChainBlocks), _columDragId] = objectTemp;
+                ChangPosition(29 - (_numberDragBlocks - curentChainBlocks), _columDragId);
+            
+                curentChainBlocks++;
+
+                //ChangeTileColor(k,j);
+            }
+        }
+        
+        
         ClearDataAfterDrop();
-        CreateGruopBlocks(false);
+        
+       
     }
 
     public void ClearDataAfterDrop()
     {
         _numberDragBlocks = 0;
         _columDragId = 0;
-        _colorDragId = 0;
     }
     int[,] CloneMatrix(int[,] original)
     {
@@ -309,7 +353,7 @@ public class GameManager : MonoBehaviour
                 
                 gridObject[currentRow, column] = gridObject[i, column];
                 //new Vector3(j, currentRows - i, 0)
-                gridObject[currentRow, column].transform.position = new Vector3(column, currentRows - currentRow, 0);
+                ChangPosition(currentRow, column);
                 
                 grid[i, column] = -1;
                 return true;
@@ -317,8 +361,52 @@ public class GameManager : MonoBehaviour
         }
         return false;
     }
-    
-    
+
+    public void ChangPosition(int i, int j)
+    {
+        gridObject[i, j].transform.position = new Vector3(j, currentRows - i, 0);
+    }
+
+    void FindSmallerGroup(ref List<GameObject> test, ref List<GameObject> origin)
+    {
+        GameObject firstObject = origin[0];
+        test.Add(origin[0]);
+        origin.Remove(firstObject);
+        
+        List<GameObject> keepChecking = new List<GameObject>();
+        for (int x = -1; x <= 1; x++)
+        {
+            for (int y = -1; y <= 1; y++)
+            {
+                int neighborX = (int)firstObject.transform.position.x + x;
+                int neighborY = (int)firstObject.transform.position.y + y;
+                
+
+                // Kiểm tra xem vị trí của hàng xóm có hợp lệ không
+                if (x == 0 || y == 0)
+                {
+                    // Loại trừ trường hợp là phần tử chính nó
+                    if (!(x == 0 && y == 0))
+                    {
+                        for (int i = 0; i < origin.Count; i++)
+                        {
+                            if (origin[i].transform.position.x == neighborX &&
+                                origin[i].transform.position.y == neighborY)
+                            {
+                                keepChecking.Add(origin[i]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int l = 0; l < keepChecking.Count; l += 2)
+        {
+            FindSmallerGroup(ref test, ref origin);
+        }
+    }
+
     void FindGroupLoop(int k, ref int[,] clonedMatrix , int i, int j ,  ref List<GameObject> test )
     {
         List<int> id = new List<int>();
@@ -399,6 +487,83 @@ public class GameManager : MonoBehaviour
         }
 
         // Nếu tất cả các phần tử trong cả hai list giống nhau, trả về true
+        return true;
+    }
+    
+    // Khi kéo đi những block thì sẽ chia khối gốc ra thành 2 phần, 1 phần là những block được kéo và phần còn lại.
+    public bool CheckListContainsInList(List<GameObject> listCheck)
+    {
+        for (int i = 0; i < newListOfLists.Count; i++)
+        {
+            if (newListOfLists[i].Count != 0)
+            {
+                if (ContainLists(listCheck, newListOfLists[i]))
+                {
+                   // Debug.Log(newListOfLists[i].Count + "  " +listCheck.Count);
+                    
+                    List<GameObject> remainingObjects = new List<GameObject>();
+                    
+                    foreach (GameObject obj1 in newListOfLists[i])
+                    {
+                        if (!listCheck.Contains(obj1))
+                        {
+                            remainingObjects.Add(obj1);
+                        }
+                    }
+                    newListOfLists[i].Clear(); // clear list cũ
+                    newListOfLists[i].AddRange(listCheck); // thay luôn list cũ vào list mới để không ảnh hướng đến thứ tự phía sau
+                    for (int j = 0; j < newListOfLists.Count; j++)
+                    {
+                        if (newListOfLists[j].Count == 0)
+                        {
+                            FindSmallestGroup(ref remainingObjects, j);
+                            //newListOfLists[j+1].AddRange(remainingObjects);
+                            break;
+                        }
+                        
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    // Chia phần còn lại thành những khối liền kề nhau
+    void FindSmallestGroup( ref List<GameObject> remainingObjects, int continuevalue)
+    {
+        Debug.Log("remind " + remainingObjects.Count);
+        
+        List<GameObject> test = new List<GameObject>();
+        if (remainingObjects.Count > 0)
+        {
+           FindSmallerGroup(ref test, ref remainingObjects);
+           
+           //Debug.Log("smalless" +test.Count);
+           
+           newListOfLists[continuevalue].AddRange(test);
+           //Debug.Log("new " + continuevalue + " new x"+ test[i].transform.position.x + " new y"+test[i].transform.position.y);
+           //Debug.Log("new " + continuevalue + "new " + newListOfLists[continuevalue].Count);
+           
+           if (remainingObjects.Count > 0)
+           {
+               FindSmallestGroup(ref remainingObjects, continuevalue+1);
+           }
+        }
+    }
+    bool ContainLists(List<GameObject> list1, List<GameObject> list2)
+    {
+        // Kiểm tra nếu list 1 có số lượng phần tử lớn hơn hoặc bằng list 2 thì sai
+        if (list1.Count >= list2.Count)
+            return false;
+
+        // Kiểm tra từng phần tử trong list1 có tồn tại trong list2 không, nếu có 1 phần từ trong list 1 không thuộc list 2 thì sai
+        foreach (var item in list1)
+        {
+            if (!list2.Contains(item))
+                return false;
+        }
+        
+        // nếu list 1 năm trong list 2 sẽ trả về đúng
         return true;
     }
 
