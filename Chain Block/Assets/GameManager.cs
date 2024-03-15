@@ -98,15 +98,15 @@ public class GameManager : MonoBehaviour
     private int _columDragId = 0;
     void DragBlocks(int i, int j)
     {
-        List<int> kk = new List<int>();
-        kk.Add(i);
+        List<int> listIndexRows = new List<int>();
+        listIndexRows.Add(i);
         _columDragId = j;
         
         for (int k = i -1; k >= 0; k--)
         {
             if (grid[k, j] == grid[i, j])
             {
-                kk.Add(k);
+                listIndexRows.Add(k);
             }
             else
             {
@@ -114,54 +114,65 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        _numberDragBlocks = kk.Count;
-
-        List<GameObject> dragObject = new List<GameObject>();
-        for (int k = 0; k < kk.Count; k++)
+        _numberDragBlocks = listIndexRows.Count;
+        
+        for (int k = 0; k < listIndexRows.Count; k++)
         {
-            int temp = grid[kk[k], j];
-            GameObject objectTemp = gridObject[kk[k], j];
-            dragObject.Add(objectTemp);
+            var targetRow = 29 - k;
+            var currentRow = listIndexRows[k];
+            MoveBlock(j, currentRow, targetRow);
             
-            grid[kk[k], j] = 0;
-            gridObject[kk[k], j] = gridObject[29 - k, j];
-            UpdatePositionOfGameobjectInGirdObject(kk[k], j);
-            
-
-            
-            grid[29 - k, j] = temp;
-            gridObject[29 - k, j] = objectTemp;
-            UpdatePositionOfGameobjectInGirdObject(29 - k, j);
-
-            
-    
         }
 
-        CheckListContainsInList(dragObject);
+    }
 
+    void MoveBlock(int column,int currentRow, int targetRow)
+    {
+        GameObject objectTemp = gridObject[targetRow, column];
+        //dragObject.Add(objectTemp);
+            
+        grid[targetRow, column] = grid[currentRow, column];   // thay đổi từ không màu thành có màu (vị trí trên cùng)
+        gridObject[targetRow, column] = gridObject[currentRow, column];
+        UpdatePositionOfGameobjectInGirdObject(targetRow, column);
+            
+        grid[currentRow, column] = 0;
+        gridObject[currentRow, column] = objectTemp;  // vị trí trên ma trận
+        UpdatePositionOfGameobjectInGirdObject(currentRow, column);
+        
+    }
+    void MoveBlock(int column,int currentRow, int targetRow, ref List<GameObject> dragObject)
+    {
+        GameObject objectTemp = gridObject[targetRow, column];
+        //dragObject.Add(objectTemp);
+            
+        grid[targetRow, column] = grid[currentRow, _columDragId];   // thay đổi từ không màu thành có màu (vị trí trên cùng)
+        gridObject[targetRow, column] = gridObject[currentRow, _columDragId];
+        
+        dragObject.Add(gridObject[targetRow, column]);
+        
+        UpdatePositionOfGameobjectInGirdObject(targetRow, column);
+            
+        grid[currentRow, _columDragId] = 0;
+        gridObject[currentRow, _columDragId] = objectTemp;  // vị trí trên ma trận
+        UpdatePositionOfGameobjectInGirdObject(currentRow, _columDragId);
+        
     }
    void DropBlocks(int i, int j)
     {
         if (j != _columDragId)
         {
             int curentChainBlocks = 1;
-        
+            List<GameObject> dragObject = new List<GameObject>();
+            // i là dòng đầu tiền 
             for (int k = i + 1; k <= i + _numberDragBlocks; k++)
             {
-                GameObject objectTemp = gridObject[k, j] ;
-            
-                grid[k, j] = grid[29 - (_numberDragBlocks - curentChainBlocks), _columDragId];
-                gridObject[k, j] = gridObject[29 - (_numberDragBlocks - curentChainBlocks), _columDragId];
-                UpdatePositionOfGameobjectInGirdObject(k,j);
-            
-                grid[29 - (_numberDragBlocks - curentChainBlocks), _columDragId] = 0;
-                gridObject[29 - (_numberDragBlocks - curentChainBlocks), _columDragId] = objectTemp;
-                UpdatePositionOfGameobjectInGirdObject(29 - (_numberDragBlocks - curentChainBlocks), _columDragId);
-            
-                curentChainBlocks++;
-
-                //ChangeTileColor(k,j);
+                var targetRow = k;
+                var currentRow = 29 - (_numberDragBlocks - curentChainBlocks);
+                 MoveBlock(j, currentRow, targetRow, ref dragObject);
+                 curentChainBlocks++;
             }
+            CheckListContainsInList(dragObject);
+            
             CreateGruopBlocks(false);
         }
         else
@@ -178,18 +189,10 @@ public class GameManager : MonoBehaviour
             }
             for (int k = i + 1; k <= i + _numberDragBlocks; k++)
             {
-                GameObject objectTemp = gridObject[k, j] ;
-            
-                grid[k, j] = grid[29 - (_numberDragBlocks - curentChainBlocks), _columDragId];
-                gridObject[k, j] = gridObject[29 - (_numberDragBlocks - curentChainBlocks), _columDragId];
-                UpdatePositionOfGameobjectInGirdObject(k,j);
-            
-                grid[29 - (_numberDragBlocks - curentChainBlocks), _columDragId] = 0;
-                gridObject[29 - (_numberDragBlocks - curentChainBlocks), _columDragId] = objectTemp;
-                UpdatePositionOfGameobjectInGirdObject(29 - (_numberDragBlocks - curentChainBlocks), _columDragId);
-            
+                var targetRow = k;
+                var currentRow = 29 - (_numberDragBlocks - curentChainBlocks);
+                MoveBlock(j, currentRow, targetRow);
                 curentChainBlocks++;
-
                 //ChangeTileColor(k,j);
             }
         }
@@ -400,9 +403,13 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        for (int l = 0; l < keepChecking.Count; l += 2)
+        for (int l = 0; l < keepChecking.Count; l++)
         {
-            FindSmallerGroup(ref test, ref origin);
+            if (origin.Count > 0)
+            {
+                FindSmallerGroup(ref test, ref origin);
+            }
+           
         }
     }
 
