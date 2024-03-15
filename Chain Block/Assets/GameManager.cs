@@ -3,8 +3,11 @@ using System.Collections;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
@@ -21,17 +24,68 @@ public class GameManager : MonoBehaviour
 
     public bool IsChain = false;
 
-    public float timeMove = 0.5f;
+    public float timeMove = 0.3f;
+
+    public TMP_InputField speed;
     
     
 
     private void Start()
     {
+        Application.targetFrameRate = 60;
+        timeMove = PlayerPrefs.GetFloat("speed");
+        if (timeMove < 0.3f)
+        {
+            timeMove = 0.3f;
+            PlayerPrefs.SetFloat("speed" , timeMove);
+            
+        }
+        speed.text = timeMove.ToString();
+        
         CreateList();
-        grid = LoadArrayFromFile(path);
+        //grid = LoadArrayFromFile(path);
+        grid = new int[30, 7] {
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0},
+            {4,0,0,0,0,0,0},
+            {4,0,0,0,0,5,5},
+            {4,3,3,3,2,2,5},
+            {2,2,2,4,4,3,2},
+            {3,5,5,5,4,3,2},
+            {3,2,4,3,2,5,5},
+            {5,2,4,5,2,5,5},
+            {5,3,2,4,4,4,2},
+            {4,3,2,2,5,3,2},
+            {5,5,4,5,3,3,5},
+            {2,5,3,3,2,2,2},
+            {2,4,2,4,3,5,5},
+            {2,4,2,3,4,5,3},
+            {3,5,4,5,2,4,3},
+            {3,5,3,5,2,5,5},
+            {5,2,5,3,5,3,2},
+            {5,2,2,3,2,3,2},
+            {3,3,5,5,2,3,2},
+            {5,5,4,3,3,5,5},
+            {2,2,2,3,4,2,3},
+            {3,3,4,3,4,2,3},
+            {4,2,5,3,5,5,4},
+            {4,2,4,2,2,4,5},
+            {2,3,3,3,2,5,2},
+            {2,2,4,4,5,4,2}
+        };
         LoadGridVisual();
 
         CreateGruopBlocks(true);
+    }
+
+    public void Replay()
+    {
+        PlayerPrefs.SetFloat("speed" , float.Parse(speed.text));
+        Scene currentScene = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(currentScene.name);
     }
 
  
@@ -45,12 +99,12 @@ public class GameManager : MonoBehaviour
             ExportBtnClick();
         }
     }
-    
-    
+
+    public bool canClick = true;
     void SelectedBlocked()
     {
         // Kiểm tra xem người dùng nhấn chuột trái
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) && canClick)
         {
             // Tạo ra một ray từ vị trí chuột
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
@@ -62,6 +116,12 @@ public class GameManager : MonoBehaviour
                 // Kiểm tra xem đối tượng được chọn có thuộc loại đối tượng mong muốn
                 if (hitInfo.collider != null)
                 {
+                    canClick = false;
+                    StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
+                    {
+                        canClick = true;
+                    }));
+                    
                     GameObject selectedObject = hitInfo.collider.gameObject;
                     
                     float x = selectedObject.transform.position.x;
@@ -502,7 +562,11 @@ public class GameManager : MonoBehaviour
         {
             if (currentListOfLists[i].Count != 0)
             {
-                if (CompareLists(listCheck, currentListOfLists[i]))
+                if (CompareLists(listCheck, currentListOfLists[i])) // điều kiện nếu nó trùng với 1 list đã tồn tại thì sai
+                {
+                    return false;
+                }
+                else if (ContainLists(listCheck, currentListOfLists[i])) // nếu không thì kiểm tra nó nằm trong list đã tồn tại 
                 {
                     return false;
                 }
