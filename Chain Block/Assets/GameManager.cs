@@ -20,6 +20,8 @@ public class GameManager : MonoBehaviour
     public string path;
 
     public bool IsChain = false;
+
+    public float timeMove = 0.5f;
     
     
 
@@ -141,9 +143,12 @@ public class GameManager : MonoBehaviour
                  MoveBlock(j, currentRow, targetRow, ref dragObject);
                  curentChainBlocks++;
             }
-            CheckListContainsInList(dragObject);
+            StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
+            {
+                CheckListContainsInList(dragObject);
             
-            CreateGruopBlocks(false);
+                CreateGruopBlocks(false);
+            }));
         }
         else
         {
@@ -201,7 +206,7 @@ public class GameManager : MonoBehaviour
         
         dragObject.Add(gridObject[targetRow, column]);
         
-        UpdatePositionOfGameobjectInGirdObject(targetRow, column);
+        UpdatePositionOfGameobjectInGirdObject(targetRow, column , true);
             
         grid[currentRow, _columDragId] = 0;
         gridObject[currentRow, _columDragId] = objectTemp;  // vị trí trên ma trận
@@ -240,7 +245,12 @@ public class GameManager : MonoBehaviour
         if (!firstTime && groupID.Count > 1)
         {
             PushEmptyPosition(ref groupID);
-            CreateGruopBlocks(false);
+            
+            StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
+            {
+                CreateGruopBlocks(false);
+            }));
+            
         }
     }
 
@@ -275,7 +285,10 @@ public class GameManager : MonoBehaviour
                         }
                         foreach (GameObject gameObject in newListOfLists[numberGruopBlocks])
                         {
-                            Destroy(gameObject); // Hủy bỏ GameObject
+                            StartCoroutine(timeMove.Tweeng((s) => gameObject.transform.localScale = s,
+                                gameObject.transform.localScale, 
+                                new Vector3(0, 0, 0)));
+                            Destroy(gameObject, timeMove + 0.05f); // Hủy bỏ GameObject
                         }
                         newListOfLists[numberGruopBlocks].Clear();
                     }
@@ -369,7 +382,29 @@ public class GameManager : MonoBehaviour
 
     public void UpdatePositionOfGameobjectInGirdObject(int i, int j)
     {
-        gridObject[i, j].transform.position = new Vector3(j, rows - i, 0);
+        //gridObject[i, j].transform.position = new Vector3(j, rows - i, 0);
+        
+        StartCoroutine(timeMove.Tweeng((p) => gridObject[i, j].transform.position = p, 
+            gridObject[i, j].transform.position
+            , new Vector3(j, rows - i, 0)));
+    }
+    public void UpdatePositionOfGameobjectInGirdObject(int i, int j, bool isDrop)
+    {
+        //gridObject[i, j].transform.position = new Vector3(j, rows - i, 0);
+        if (isDrop)
+        {
+            StartCoroutine(0.1f.Tweeng((p) => gridObject[i, j].transform.position = p, 
+                gridObject[i, j].transform.position
+                , new Vector3(j, gridObject[i, j].transform.position.y, 0)));
+        
+            StartCoroutine((0.1f).DelayedAction(() =>
+            {
+                 StartCoroutine((timeMove - 0.1f).Tweeng((p) => gridObject[i, j].transform.position = p, 
+                     gridObject[i, j].transform.position
+                     , new Vector3(gridObject[i, j].transform.position.x, rows - i , 0)));
+            }));
+        }
+        
     }
 
     void FindSmallerGroup(ref List<GameObject> test, ref List<GameObject> origin)
