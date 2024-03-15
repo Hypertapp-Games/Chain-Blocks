@@ -257,7 +257,7 @@ MonoBehaviour:
   - {r: 1, g: 0.100676, b: 0, a: 1}
   - {r: 1, g: 0, b: 0.93470955, a: 1}
   - {r: 0.9528302, g: 0.56423473, b: 0.14831792, a: 1}
-  path: Assets/Data/arrayData1.txt
+  path: Assets/Data/arrayData4.txt
   IsChain: 0
   numberGruopBlocks: 0
 --- !u!4 &516517705

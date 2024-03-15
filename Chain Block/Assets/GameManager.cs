@@ -68,7 +68,7 @@ public class GameManager : MonoBehaviour
                     int i = 0;
                     int j = (int)x; //cot
                     
-                    for (int k = 29; k >= 0; k--)
+                    for (int k = 0; k <rows; k++)
                     {
                         if (grid[k, j] != 0)
                         {
@@ -101,7 +101,7 @@ public class GameManager : MonoBehaviour
         listIndexRows.Add(i);
         _columDragId = j;
         
-        for (int k = i -1; k >= 0; k--)
+        for (int k = i + 1; k < rows; k++)
         {
             if (grid[k, j] == grid[i, j])
             {
@@ -117,7 +117,7 @@ public class GameManager : MonoBehaviour
         
         for (int k = 0; k < listIndexRows.Count; k++)
         {
-            var targetRow = 29 - k;
+            var targetRow = k;
             var currentRow = listIndexRows[k];
             MoveBlock(j, currentRow, targetRow);
             
@@ -130,13 +130,14 @@ public class GameManager : MonoBehaviour
     {
         if (j != _columDragId)
         {
-            int curentChainBlocks = 1;
+            int curentChainBlocks = 0;
             List<GameObject> dragObject = new List<GameObject>();
             // i là dòng đầu tiền 
-            for (int k = i + 1; k <= i + _numberDragBlocks; k++)
+            for (int k = i - _numberDragBlocks; k < i ; k++)
             {
                 var targetRow = k;
-                var currentRow = 29 - (_numberDragBlocks - curentChainBlocks);
+                var currentRow = curentChainBlocks;
+                
                  MoveBlock(j, currentRow, targetRow, ref dragObject);
                  curentChainBlocks++;
             }
@@ -146,9 +147,9 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            int curentChainBlocks = 1;
+            int curentChainBlocks = 0;
 
-            for (int k = 29 - _numberDragBlocks; k >= 0; k--)
+            for (int k = _numberDragBlocks; k < rows; k++)
             {
                 if (grid[k, j] != 0)
                 {
@@ -156,10 +157,10 @@ public class GameManager : MonoBehaviour
                     break;
                 }
             }
-            for (int k = i + 1; k <= i + _numberDragBlocks; k++)
+            for (int k = i - _numberDragBlocks; k < i ; k++)
             {
                 var targetRow = k;
-                var currentRow = 29 - (_numberDragBlocks - curentChainBlocks);
+                var currentRow = curentChainBlocks;
                 MoveBlock(j, currentRow, targetRow);
                 curentChainBlocks++;
                 //ChangeTileColor(k,j);
@@ -291,43 +292,46 @@ public class GameManager : MonoBehaviour
    void PushEmptyPosition(ref List<int> testID)
     {
         List<int> numberEmptyEachColumns = new List<int>();
-        for (int i = 0; i < 10; i++)
+        
+        for (int i = 0; i < columns; i++) /// số cột
         {
             int emptyCount = 0;
-            int minRow = int.MaxValue;
-            for (int j = 0; j < testID.Count; j+=2)
+            
+            int maxRow = int.MinValue;
+            
+            for (int j = 0; j < testID.Count; j+=2) // testID, số chẵn là chỉ số dòng, còn số lẻ là chỉ số cột 
             {
                 if (testID[j + 1] == i)
                 {
                     emptyCount++;
-                    minRow = Mathf.Min(minRow, testID[j]);
+                    maxRow = Mathf.Max(maxRow, testID[j]);
                 }
             }
 
-            if (emptyCount > 0)
+            if (emptyCount > 0) // nếu trong 1 cột có số ô trống lớn hơn 1 thì sẽ làm gì đó
             {
                 numberEmptyEachColumns.Add(i);
-                numberEmptyEachColumns.Add(minRow);
+                numberEmptyEachColumns.Add(maxRow);
             }
         }
         
         for (int j = 0; j < testID.Count; j += 2)
         {
-            grid[testID[j], testID[j + 1]] = -1;
+            grid[testID[j], testID[j + 1]] = -1; // thay id bằng số -1 
         }
 
-        for (int i = 0; i < numberEmptyEachColumns.Count; i += 2)
+        for (int i = 0; i < numberEmptyEachColumns.Count; i += 2) // sét theo từng dòng 
         {
             int column = numberEmptyEachColumns[i];
-            int firstRowToSkip = numberEmptyEachColumns[i + 1];
+            int lastRow = numberEmptyEachColumns[i + 1];
             
-            PushToEmpty_Loop(column, firstRowToSkip);
+            PushToEmpty_Loop(column, lastRow);
         }
     }
 
-    void PushToEmpty_Loop(int column, int firstRow)
+    void PushToEmpty_Loop(int column, int lastRow)
     {
-        for (int i = firstRow; i < rows; i++)
+        for (int i = lastRow; i >= 0; i--)
         {
             if (grid[i, column] == -1)
             {
@@ -346,7 +350,7 @@ public class GameManager : MonoBehaviour
 
     bool checkHaveNonEmptyCell(int currentRow, int column)
     {
-        for (int i = currentRow; i < rows; i++)
+        for (int i = currentRow; i >= 0; i--)
         {
             if (grid[i, column] != -1)
             {

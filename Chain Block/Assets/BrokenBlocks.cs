@@ -6,13 +6,10 @@ using UnityEngine;
 
 public class BrokenBlocks : MonoBehaviour
 {
-    
     private int[,] grid;
+    
     private int rows;
-    private int cols;
-
-    private int currentRows;
-    private int currentColumns;
+    private int columns;
     
     private GameObject[,] gridObject;
     
@@ -26,27 +23,195 @@ public class BrokenBlocks : MonoBehaviour
 
     private void Start()
     {
+        CreateList();
         grid = LoadArrayFromFile(path);
         LoadGridVisual();
+
+        CreateGruopBlocks(true);
     }
 
  
     private bool isDrag = false;
     public  void Update()
     {
-        if (Input.GetKeyDown(KeyCode.A))
+        SelectedBlocked();
+
+        if (Input.GetKeyDown(KeyCode.E))
         {
-            int[,] clonedMatrix = CloneMatrix(grid);
-            FindInEachId(4, ref clonedMatrix);
+            ExportBtnClick();
         }
+    }
+    
+    
+    void SelectedBlocked()
+    {
+        // Kiểm tra xem người dùng nhấn chuột trái
+        if (Input.GetMouseButtonDown(0))
+        {
+            // Tạo ra một ray từ vị trí chuột
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hitInfo;
+
+            // Thực hiện raycast
+            if (Physics.Raycast(ray, out hitInfo))
+            {
+                // Kiểm tra xem đối tượng được chọn có thuộc loại đối tượng mong muốn
+                if (hitInfo.collider != null)
+                {
+                    GameObject selectedObject = hitInfo.collider.gameObject;
+                    
+                    float x = selectedObject.transform.position.x;
+                    float y = selectedObject.transform.position.y;
+
+                    int i = 0;
+                    int j = (int)x; //cot
+                    
+                    for (int k = 29; k >= 0; k--)
+                    {
+                        if (grid[k, j] != 0)
+                        {
+                            i = k; // hang
+                            break;
+                        }
+                    }
+
+                    if (!IsChain)
+                    {
+                        DragBlocks(i , j);
+                        IsChain = true;
+                    }
+                    else
+                    {
+                        DropBlocks(i, j);
+                        IsChain = false;
+                    }
+                    
+                }
+            }
+        }
+    }
+
+    private int _numberDragBlocks = 0;
+    private int _columDragId = 0;
+    void DragBlocks(int i, int j)
+    {
+        List<int> listIndexRows = new List<int>();
+        listIndexRows.Add(i);
+        _columDragId = j;
+        
+        for (int k = i -1; k >= 0; k--)
+        {
+            if (grid[k, j] == grid[i, j])
+            {
+                listIndexRows.Add(k);
+            }
+            else
+            {
+               break;
+            }
+        }
+
+        _numberDragBlocks = listIndexRows.Count;
+        
+        for (int k = 0; k < listIndexRows.Count; k++)
+        {
+            var targetRow = 29 - k;
+            var currentRow = listIndexRows[k];
+            MoveBlock(j, currentRow, targetRow);
+            
+        }
+
+    }
+
+    
+   void DropBlocks(int i, int j)
+    {
+        if (j != _columDragId)
+        {
+            int curentChainBlocks = 1;
+            List<GameObject> dragObject = new List<GameObject>();
+            // i là dòng đầu tiền 
+            for (int k = i + 1; k <= i + _numberDragBlocks; k++)
+            {
+                var targetRow = k;
+                var currentRow = 29 - (_numberDragBlocks - curentChainBlocks);
+                 MoveBlock(j, currentRow, targetRow, ref dragObject);
+                 curentChainBlocks++;
+            }
+            CheckListContainsInList(dragObject);
+            
+            CreateGruopBlocks(false);
+        }
+        else
+        {
+            int curentChainBlocks = 1;
+
+            for (int k = 29 - _numberDragBlocks; k >= 0; k--)
+            {
+                if (grid[k, j] != 0)
+                {
+                    i = k; // hang
+                    break;
+                }
+            }
+            for (int k = i + 1; k <= i + _numberDragBlocks; k++)
+            {
+                var targetRow = k;
+                var currentRow = 29 - (_numberDragBlocks - curentChainBlocks);
+                MoveBlock(j, currentRow, targetRow);
+                curentChainBlocks++;
+                //ChangeTileColor(k,j);
+            }
+        }
+        
+        
+        ClearDataAfterDrop();
+        
+       
+    }
+
+    public void ClearDataAfterDrop()
+    {
+        _numberDragBlocks = 0;
+        _columDragId = 0;
+    }
+    void MoveBlock(int column,int currentRow, int targetRow)
+    {
+        GameObject objectTemp = gridObject[targetRow, column];
+        //dragObject.Add(objectTemp);
+        grid[targetRow, column] = grid[currentRow, column];   // thay đổi từ không màu thành có màu (vị trí trên cùng)
+        gridObject[targetRow, column] = gridObject[currentRow, column];
+        UpdatePositionOfGameobjectInGirdObject(targetRow, column);
+            
+        grid[currentRow, column] = 0;
+        gridObject[currentRow, column] = objectTemp;  // vị trí trên ma trận
+        UpdatePositionOfGameobjectInGirdObject(currentRow, column);
+        
+    }
+    void MoveBlock(int column,int currentRow, int targetRow, ref List<GameObject> dragObject)
+    {
+        GameObject objectTemp = gridObject[targetRow, column];
+        //dragObject.Add(objectTemp);
+            
+        grid[targetRow, column] = grid[currentRow, _columDragId];   // thay đổi từ không màu thành có màu (vị trí trên cùng)
+        gridObject[targetRow, column] = gridObject[currentRow, _columDragId];
+        
+        dragObject.Add(gridObject[targetRow, column]);
+        
+        UpdatePositionOfGameobjectInGirdObject(targetRow, column);
+            
+        grid[currentRow, _columDragId] = 0;
+        gridObject[currentRow, _columDragId] = objectTemp;  // vị trí trên ma trận
+        UpdatePositionOfGameobjectInGirdObject(currentRow, _columDragId);
+        
     }
     int[,] CloneMatrix(int[,] original)
     {
-        int[,] clone = new int[currentRows, currentColumns];
+        int[,] clone = new int[rows, columns];
 
-        for (int i = 0; i < currentRows; i++)
+        for (int i = 0; i < rows; i++)
         {
-            for (int j = 0; j < currentColumns; j++)
+            for (int j = 0; j < columns; j++)
             {
                 clone[i, j] = original[i, j];
             }
@@ -54,48 +219,74 @@ public class BrokenBlocks : MonoBehaviour
 
         return clone;
     }
-
-    void FindInEachId(int k, ref int[,] clonedMatrix )
+    public int numberGruopBlocks = 0;
+    void CreateGruopBlocks(bool firstTime)
     {
-        List<GameObject> test = new List<GameObject>();
-        List<int> testID = new List<int>();
-        for (int i = 0; i < currentRows; i++)
+        numberGruopBlocks = 0;// reset
+        
+        CloneNewListToCurrentList();
+        
+        int[,] clonedMatrix = CloneMatrix(grid);
+        
+        List<int> groupID = new List<int>();
+        
+        for (int i = 2; i < 10; i++)
         {
-            for (int j = 0; j < currentColumns; j++)
-            {
-                if (clonedMatrix[i, j] == k)
-                {
-                    FindGroupLoop(k, ref clonedMatrix, i, j , ref test, true);
-                    
-                    if (test.Count > 1)
-                    {
-                        Debug.Log(test.Count);
-                        for (int l = 0; l < test.Count; l++)
-                        {
-                            float x = test[l].transform.position.x;
-                            float y = test[l].transform.position.y;
-                            int gridX = currentRows - (int)y;
-                            testID.Add(gridX);
-                            int gridY = (int)x;
-                            testID.Add(gridY);
-                            
-                            test[l].gameObject.SetActive(false);
-                            //Debug.Log("Adjacent value at position (" + gridX + ", " + gridY + ") is: " + grid[gridX, gridY]);
+            FindGroupWithEachID(i, ref clonedMatrix , firstTime, ref groupID);
+        }
+        if (!firstTime && groupID.Count > 1)
+        {
+            PushEmptyPosition(ref groupID);
+            CreateGruopBlocks(false);
+        }
+    }
 
-                        }
+    void FindGroupWithEachID (int id, ref int[,] clonedMatrix, bool firstTime ,  ref List<int> groupID)
+    {
+        List<GameObject> groupObject = new List<GameObject>();
+        
+        for (int i = 0; i < rows; i++)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                if (clonedMatrix[i, j] == id)
+                {
+                    FindGroup_Loop(id, ref clonedMatrix, i, j , ref groupObject);
+                    for (int l = 0; l < groupObject.Count; l++)
+                    {
+                        newListOfLists[numberGruopBlocks].Add(groupObject[l]);
                     }
-                   test.Clear();
+                    
+                    if (groupObject.Count > 1 && NoOverlapWithAnyPreviousList(newListOfLists[numberGruopBlocks])&&!firstTime)
+                    {
+                        for (int l = 0; l < groupObject.Count; l++)
+                        {
+                            float x = groupObject[l].transform.position.x;
+                            float y = groupObject[l].transform.position.y;
+                            
+                            int gridX = rows - (int)y;
+                            groupID.Add(gridX); // i
+                            
+                            int gridY = (int)x;
+                            groupID.Add(gridY); // j
+                        }
+                        foreach (GameObject gameObject in newListOfLists[numberGruopBlocks])
+                        {
+                            Destroy(gameObject); // Hủy bỏ GameObject
+                        }
+                        newListOfLists[numberGruopBlocks].Clear();
+                    }
+                    groupObject.Clear();
+                   numberGruopBlocks++;
 
                 }
             }
         }
-
-        PushEmptyPosition(ref testID);
-        //LoadGridVisual();
-
+        
     }
 
-    void PushEmptyPosition(ref List<int> testID)
+    
+   void PushEmptyPosition(ref List<int> testID)
     {
         List<int> numberEmptyEachColumns = new List<int>();
         for (int i = 0; i < 10; i++)
@@ -128,20 +319,20 @@ public class BrokenBlocks : MonoBehaviour
             int column = numberEmptyEachColumns[i];
             int firstRowToSkip = numberEmptyEachColumns[i + 1];
             
-            PushToEmpty(column, firstRowToSkip);
+            PushToEmpty_Loop(column, firstRowToSkip);
         }
     }
 
-    void PushToEmpty(int column, int firstRow)
+    void PushToEmpty_Loop(int column, int firstRow)
     {
-        for (int i = firstRow; i < currentRows; i++)
+        for (int i = firstRow; i < rows; i++)
         {
             if (grid[i, column] == -1)
             {
                 if (!checkHaveNonEmptyCell(i, column))
                 {
                     grid[i, column] = 0;
-                    var tile = Instantiate(quad, new Vector3(column, currentRows - i, 0), Quaternion.identity);
+                    var tile = Instantiate(quad, new Vector3(column, rows - i, 0), Quaternion.identity);
                     gridObject[i, column] = tile;
                     tile.transform.SetParent(gameObject.transform);
                     
@@ -151,17 +342,17 @@ public class BrokenBlocks : MonoBehaviour
         }
     }
 
-    bool checkHaveNonEmptyCell(int current, int column)
+    bool checkHaveNonEmptyCell(int currentRow, int column)
     {
-        for (int i = current; i < currentRows; i++)
+        for (int i = currentRow; i < rows; i++)
         {
             if (grid[i, column] != -1)
             {
-                grid[current, column] = grid[i, column];
+                grid[currentRow, column] = grid[i, column];
                 
-                gridObject[current, column] = gridObject[i, column];
-                //new Vector3(j, currentRows - i, 0)
-                gridObject[current, column].transform.position = new Vector3(column, currentRows - current, 0);
+                gridObject[currentRow, column] = gridObject[i, column];
+                //new Vector3(j, rows - i, 0)
+                UpdatePositionOfGameobjectInGirdObject(currentRow, column);
                 
                 grid[i, column] = -1;
                 return true;
@@ -169,90 +360,67 @@ public class BrokenBlocks : MonoBehaviour
         }
         return false;
     }
-    
-    // void PushEmptyPosition(ref List<int> testID)
-    // {
-    //     List<int> numberEmptyEachColumns = new List<int>();
-    //     for (int i = 0; i < 10; i++)
-    //     {
-    //         int minRow = int.MaxValue;
-    //         int maxRow = int.MinValue;
-    //         int emptyCount = 0;
-    //
-    //         for (int j = 0; j < testID.Count; j += 2)
-    //         {
-    //             if (testID[j + 1] == i) // Kiểm tra cột
-    //             {
-    //                 emptyCount++;
-    //                 minRow = Mathf.Min(minRow, testID[j]);
-    //                 maxRow = Mathf.Max(maxRow, testID[j]);
-    //             }
-    //         }
-    //
-    //         if (emptyCount > 0)
-    //         {
-    //             numberEmptyEachColumns.Add(i);
-    //             numberEmptyEachColumns.Add(emptyCount);
-    //             numberEmptyEachColumns.Add(minRow);
-    //             numberEmptyEachColumns.Add(maxRow);
-    //         }
-    //     }
-    //
-    //     for (int i = 0; i < numberEmptyEachColumns.Count; i += 4)
-    //     {
-    //         int column = numberEmptyEachColumns[i];
-    //         int emptyCount = numberEmptyEachColumns[i+1];
-    //         int firstRowToSkip = numberEmptyEachColumns[i + 2];
-    //         int lastRowToSkip = numberEmptyEachColumns[i + 3];
-    //
-    //         if (emptyCount > 0)
-    //         {
-    //             Push(column, firstRowToSkip, lastRowToSkip, emptyCount);
-    //         }
-    //     }
-    // }
-    //
-    // void Push(int column, int firstRowToSkip, int lastRowToSkip, int emptyCount)
-    // {
-    //     //Debug.Log("colum "+ column + "  num" + emptyCount );
-    //     for (int i = firstRowToSkip; i < currentRows; i++)
-    //     {
-    //         gridObject[i, column].transform.position += new Vector3(0, emptyCount, 0);
-    //         if (i <= lastRowToSkip)
-    //         {
-    //             Destroy(gridObject[i, column].gameObject);
-    //         }
-    //         if (i + emptyCount < currentRows)
-    //         {
-    //             grid[i, column] = grid[i + emptyCount, column];
-    //             gridObject[i, column] = gridObject[i + emptyCount, column];
-    //             
-    //         }
-    //         else
-    //         {
-    //             grid[i, column] = 0;
-    //             var tile = Instantiate(quad, new Vector3(column, currentRows - i, 0), Quaternion.identity);
-    //             gridObject[i, column] = tile;
-    //             tile.transform.SetParent(gameObject.transform);
-    //             
-    //             ChangeTileColor(i,column);
-    //         }
-    //     }
-    //
-    //
-    // }
-    
-    
-    void FindGroupLoop(int k, ref int[,] clonedMatrix , int i, int j ,  ref List<GameObject> test, bool onlyFirst)
+
+    public void UpdatePositionOfGameobjectInGirdObject(int i, int j)
+    {
+        gridObject[i, j].transform.position = new Vector3(j, rows - i, 0);
+    }
+
+    void FindSmallerGroup(ref List<GameObject> test, ref List<GameObject> origin)
+    {
+        GameObject firstObject = origin[0];
+        test.Add(origin[0]);
+        origin.Remove(firstObject);
+        
+        List<GameObject> keepChecking = new List<GameObject>();
+        for (int x = -1; x <= 1; x++)
+        {
+            for (int y = -1; y <= 1; y++)
+            {
+                int neighborX = (int)firstObject.transform.position.x + x;
+                int neighborY = (int)firstObject.transform.position.y + y;
+                
+
+                // Kiểm tra xem vị trí của hàng xóm có hợp lệ không
+                if (x == 0 || y == 0)
+                {
+                    // Loại trừ trường hợp là phần tử chính nó
+                    if (!(x == 0 && y == 0))
+                    {
+                        for (int i = 0; i < origin.Count; i++)
+                        {
+                            if (origin[i].transform.position.x == neighborX &&
+                                origin[i].transform.position.y == neighborY)
+                            {
+                                keepChecking.Add(origin[i]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int l = 0; l < keepChecking.Count; l++)
+        {
+            if (origin.Count > 0)
+            {
+                FindSmallerGroup(ref test, ref origin);
+            }
+           
+        }
+    }
+
+    void FindGroup_Loop(int k, ref int[,] clonedMatrix , int i, int j ,  ref List<GameObject> test )
     {
         List<int> id = new List<int>();
-   
+        
         
         if (clonedMatrix[i, j] != k)
             return;
+        
         clonedMatrix[i, j] = 0;
         test.Add(gridObject[i, j]);
-
+        
         for (int x = -1; x <= 1; x++)
         {
             for (int y = -1; y <= 1; y++)
@@ -261,7 +429,7 @@ public class BrokenBlocks : MonoBehaviour
                 int neighborY = j + y;
 
                 // Kiểm tra xem vị trí của hàng xóm có hợp lệ không
-                if (neighborX >= 0 && neighborX < currentRows && neighborY >= 0 && neighborY < currentColumns && (x == 0 || y == 0))
+                if (neighborX >= 0 && neighborX < rows && neighborY >= 0 && neighborY < columns && (x == 0 || y == 0))
                 {
                     // Loại trừ trường hợp là phần tử chính nó
                     if (!(x == 0 && y == 0))
@@ -270,10 +438,9 @@ public class BrokenBlocks : MonoBehaviour
                         {
                             id.Add(neighborX);
                             id.Add(neighborY);
-                            Debug.Log("Adjacent value at position (" + neighborX + ", " + neighborY + ") is: " + clonedMatrix[neighborX, neighborY]);
+                          // Debug.Log("Adjacent value at position (" + neighborX + ", " + neighborY + ") is: " + clonedMatrix[neighborX, neighborY]);
                         }
                     }
-                    
                 }
             }
         }
@@ -283,12 +450,155 @@ public class BrokenBlocks : MonoBehaviour
         // }
         for (int l = 0; l < id.Count; l += 2)
         {
-            FindGroupLoop(k, ref clonedMatrix, id[l], id[l + 1], ref test, false);
+            FindGroup_Loop(k, ref clonedMatrix, id[l], id[l + 1], ref test);
         }
         
     }
 
+    public bool NoOverlapWithAnyPreviousList(List<GameObject> listCheck)
+    {
+        for (int i = 0; i < currentListOfLists.Count; i++)
+        {
+            if (currentListOfLists[i].Count != 0)
+            {
+                if (CompareLists(listCheck, currentListOfLists[i]))
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    bool CompareLists(List<GameObject> list1, List<GameObject> list2)
+    {
+        // Kiểm tra nếu hai list có cùng số lượng phần tử
+        if (list1.Count != list2.Count)
+            return false;
+
+        // Kiểm tra từng phần tử trong list1 có tồn tại trong list2 không
+        foreach (var item in list1)
+        {
+            if (!list2.Contains(item))
+                return false;
+        }
+
+        // Kiểm tra từng phần tử trong list2 có tồn tại trong list1 không (đảm bảo cả hai list chứa cùng các phần tử)
+        foreach (var item in list2)
+        {
+            if (!list1.Contains(item))
+                return false;
+        }
+
+        // Nếu tất cả các phần tử trong cả hai list giống nhau, trả về true
+        return true;
+    }
     
+    // Khi kéo đi những block thì sẽ chia khối gốc ra thành 2 phần, 1 phần là những block được kéo và phần còn lại.
+    public bool CheckListContainsInList(List<GameObject> listCheck)
+    {
+        for (int i = 0; i < newListOfLists.Count; i++)
+        {
+            if (newListOfLists[i].Count != 0)
+            {
+                if (ContainLists(listCheck, newListOfLists[i]))
+                {
+                   // Debug.Log(newListOfLists[i].Count + "  " +listCheck.Count);
+                    
+                    List<GameObject> remainingObjects = new List<GameObject>();
+                    
+                    foreach (GameObject obj1 in newListOfLists[i])
+                    {
+                        if (!listCheck.Contains(obj1))
+                        {
+                            remainingObjects.Add(obj1);
+                        }
+                    }
+                    newListOfLists[i].Clear(); // clear list cũ
+                    newListOfLists[i].AddRange(listCheck); // thay luôn list cũ vào list mới để không ảnh hướng đến thứ tự phía sau
+                    for (int j = 0; j < newListOfLists.Count; j++)
+                    {
+                        if (newListOfLists[j].Count == 0)
+                        {
+                            FindSmallestGroup(ref remainingObjects, j);
+                            //newListOfLists[j+1].AddRange(remainingObjects);
+                            break;
+                        }
+                        
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    // Chia phần còn lại thành những khối liền kề nhau
+    void FindSmallestGroup( ref List<GameObject> remainingObjects, int continuevalue)
+    {
+        Debug.Log("remind " + remainingObjects.Count);
+        
+        List<GameObject> test = new List<GameObject>();
+        if (remainingObjects.Count > 0)
+        {
+           FindSmallerGroup(ref test, ref remainingObjects);
+            
+           newListOfLists[continuevalue].AddRange(test);
+           //Debug.Log("new " + continuevalue + " new x"+ test[i].transform.position.x + " new y"+test[i].transform.position.y);
+           //Debug.Log("new " + continuevalue + "new " + newListOfLists[continuevalue].Count);
+           
+           if (remainingObjects.Count > 0)
+           {
+               FindSmallestGroup(ref remainingObjects, continuevalue+1);
+           }
+        }
+    }
+    bool ContainLists(List<GameObject> list1, List<GameObject> list2)
+    {
+
+        if (list1.Count >= list2.Count)
+            return false;
+        
+        foreach (var item in list1)
+        {
+            if (!list2.Contains(item))
+                return false;
+        }
+        return true;
+    }
+    // Sau khi sử dụng xong sẽ xoá new list và lưu dữ liệu vào current list
+    public void CloneNewListToCurrentList()
+    {
+        for (int i = 0; i < newListOfLists.Count; i++)
+        {
+            CloneListGameObjects(ref newListOfLists, ref currentListOfLists , i);
+        }
+    }
+    
+    public void CloneListGameObjects(ref List<List<GameObject>> originalGameObjects, ref List<List<GameObject>> clonedGameObjects, int index)
+    {
+        clonedGameObjects[index].Clear();
+
+        foreach (GameObject originalGO in originalGameObjects[index])
+        {
+            clonedGameObjects[index].Add(originalGO);
+        }
+        originalGameObjects[index].Clear();
+    }
+    
+    public List<List<GameObject>> currentListOfLists = new List<List<GameObject>>();
+    public List<List<GameObject>> newListOfLists = new List<List<GameObject>>();
+
+    // Tạo danh sách trống để lưu những list chứa group block để so sánh chúng với nhau
+    void CreateList()
+    {
+        for (int i = 0; i < 200; i++)
+        {
+            List<GameObject> currentSublist = new List<GameObject>();
+            List<GameObject> newSublist = new List<GameObject>();
+
+            currentListOfLists.Add(currentSublist);
+            newListOfLists.Add(newSublist);
+        }
+    }
     private int[,] LoadArrayFromFile(string filePath)
     {
         string[] lines = File.ReadAllLines(filePath);
@@ -328,15 +638,15 @@ public class BrokenBlocks : MonoBehaviour
 
         if (gameObject.transform.childCount == 0)
         {
-            currentRows = grid.GetLength(0);
-            currentColumns = grid.GetLength(1);
+            rows = grid.GetLength(0);
+            columns = grid.GetLength(1);
 
-            gridObject = new GameObject[currentRows, currentColumns];
-            for (int i = 0; i < currentRows; i++)
+            gridObject = new GameObject[rows, columns];
+            for (int i = 0; i < rows; i++)
             {
-                for (int j = 0; j < currentColumns; j++)
+                for (int j = 0; j < columns; j++)
                 {
-                    var tile = Instantiate(quad, new Vector3(j, currentRows - i, 0), Quaternion.identity);
+                    var tile = Instantiate(quad, new Vector3(j, rows - i, 0), Quaternion.identity);
                     gridObject[i, j] = tile;
                     tile.transform.SetParent(gameObject.transform);
 
@@ -392,6 +702,33 @@ public class BrokenBlocks : MonoBehaviour
         Debug.Log("       " + number[9, 0] + "       " + number[9, 1] + "       " + number[9, 2] + "       " +
                   number[9, 3] + "       " + number[9, 4] + "  ");
     }
+    public void ExportBtnClick()
+    {
+        var time = DateTime.Now.ToString("dd_MM_yyyy (HH:mm:ss)");
+        string filePath = "Assets/Data/arrayData" + time + ".txt";
 
-    
+        SaveArrayToFile(filePath, grid);
+
+        Debug.Log("Dữ liệu đã được lưu vào tệp văn bản.");
+    }
+    void SaveArrayToFile(string filePath, int[,] arrayToSave)
+    {
+        using (StreamWriter writer = new StreamWriter(filePath))
+        {
+            for (int i = 0; i < arrayToSave.GetLength(0); i++)
+            {
+                for (int j = 0; j < arrayToSave.GetLength(1); j++)
+                {
+                    writer.Write(arrayToSave[i, j]);
+
+                    if (j < arrayToSave.GetLength(1) - 1)
+                    {
+                        writer.Write(",");
+                    }
+                }
+
+                writer.WriteLine();
+            }
+        }
+    }
 }
