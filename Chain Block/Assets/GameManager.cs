@@ -43,8 +43,7 @@ public class GameManager : MonoBehaviour
             ExportBtnClick();
         }
     }
-
-  
+    
     
     void SelectedBlocked()
     {
@@ -126,37 +125,7 @@ public class GameManager : MonoBehaviour
 
     }
 
-    void MoveBlock(int column,int currentRow, int targetRow)
-    {
-        GameObject objectTemp = gridObject[targetRow, column];
-        //dragObject.Add(objectTemp);
-            
-        grid[targetRow, column] = grid[currentRow, column];   // thay đổi từ không màu thành có màu (vị trí trên cùng)
-        gridObject[targetRow, column] = gridObject[currentRow, column];
-        UpdatePositionOfGameobjectInGirdObject(targetRow, column);
-            
-        grid[currentRow, column] = 0;
-        gridObject[currentRow, column] = objectTemp;  // vị trí trên ma trận
-        UpdatePositionOfGameobjectInGirdObject(currentRow, column);
-        
-    }
-    void MoveBlock(int column,int currentRow, int targetRow, ref List<GameObject> dragObject)
-    {
-        GameObject objectTemp = gridObject[targetRow, column];
-        //dragObject.Add(objectTemp);
-            
-        grid[targetRow, column] = grid[currentRow, _columDragId];   // thay đổi từ không màu thành có màu (vị trí trên cùng)
-        gridObject[targetRow, column] = gridObject[currentRow, _columDragId];
-        
-        dragObject.Add(gridObject[targetRow, column]);
-        
-        UpdatePositionOfGameobjectInGirdObject(targetRow, column);
-            
-        grid[currentRow, _columDragId] = 0;
-        gridObject[currentRow, _columDragId] = objectTemp;  // vị trí trên ma trận
-        UpdatePositionOfGameobjectInGirdObject(currentRow, _columDragId);
-        
-    }
+    
    void DropBlocks(int i, int j)
     {
         if (j != _columDragId)
@@ -207,6 +176,36 @@ public class GameManager : MonoBehaviour
     {
         _numberDragBlocks = 0;
         _columDragId = 0;
+    }
+    void MoveBlock(int column,int currentRow, int targetRow)
+    {
+        GameObject objectTemp = gridObject[targetRow, column];
+        //dragObject.Add(objectTemp);
+        grid[targetRow, column] = grid[currentRow, column];   // thay đổi từ không màu thành có màu (vị trí trên cùng)
+        gridObject[targetRow, column] = gridObject[currentRow, column];
+        UpdatePositionOfGameobjectInGirdObject(targetRow, column);
+            
+        grid[currentRow, column] = 0;
+        gridObject[currentRow, column] = objectTemp;  // vị trí trên ma trận
+        UpdatePositionOfGameobjectInGirdObject(currentRow, column);
+        
+    }
+    void MoveBlock(int column,int currentRow, int targetRow, ref List<GameObject> dragObject)
+    {
+        GameObject objectTemp = gridObject[targetRow, column];
+        //dragObject.Add(objectTemp);
+            
+        grid[targetRow, column] = grid[currentRow, _columDragId];   // thay đổi từ không màu thành có màu (vị trí trên cùng)
+        gridObject[targetRow, column] = gridObject[currentRow, _columDragId];
+        
+        dragObject.Add(gridObject[targetRow, column]);
+        
+        UpdatePositionOfGameobjectInGirdObject(targetRow, column);
+            
+        grid[currentRow, _columDragId] = 0;
+        gridObject[currentRow, _columDragId] = objectTemp;  // vị trí trên ma trận
+        UpdatePositionOfGameobjectInGirdObject(currentRow, _columDragId);
+        
     }
     int[,] CloneMatrix(int[,] original)
     {
