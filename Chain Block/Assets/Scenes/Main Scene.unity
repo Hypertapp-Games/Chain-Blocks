@@ -820,8 +820,9 @@ MonoBehaviour:
   - {r: 0.9528302, g: 0.56423473, b: 0.14831792, a: 1}
   path: Assets/Data/arrayData4.txt
   IsChain: 0
-  timeMove: 0.3
+  timeMove: 0.2
   speed: {fileID: 2024616012}
+  canClick: 1
   numberGruopBlocks: 0
 --- !u!4 &516517705
 Transform:
@@ -1302,7 +1303,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 60
+  field of view: 33
   orthographic: 0
   orthographic size: 12
   m_Depth: -1
@@ -1328,7 +1329,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1134214927}
   m_LocalRotation: {x: 0.1067738, y: -0, z: -0, w: 0.9942834}
-  m_LocalPosition: {x: 2.7, y: 24.17, z: -26.5}
+  m_LocalPosition: {x: 3.1, y: 39.5, z: -26.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1456,7 +1457,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1168706854}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 10.88, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1803,7 +1804,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1682939799
 MonoBehaviour:
   m_ObjectHideFlags: 0

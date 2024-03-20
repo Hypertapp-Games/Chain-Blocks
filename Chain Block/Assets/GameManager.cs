@@ -8,6 +8,7 @@ using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Random = UnityEngine.Random;
 
 public class GameManager : MonoBehaviour
 {
@@ -34,9 +35,9 @@ public class GameManager : MonoBehaviour
     {
         Application.targetFrameRate = 60;
         timeMove = PlayerPrefs.GetFloat("speed");
-        if (timeMove < 0.3f)
+        if (timeMove < 0.2f)
         {
-            timeMove = 0.3f;
+            timeMove = 0.2f;
             PlayerPrefs.SetFloat("speed" , timeMove);
             
         }
@@ -44,7 +45,7 @@ public class GameManager : MonoBehaviour
         
         CreateList();
         //grid = LoadArrayFromFile(path);
-        grid = new int[30, 7] {
+        grid = new int[41, 7] {
             {0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0},
@@ -74,7 +75,18 @@ public class GameManager : MonoBehaviour
             {4,2,5,3,5,5,4},
             {4,2,4,2,2,4,5},
             {2,3,3,3,2,5,2},
-            {2,2,4,4,5,4,2}
+            {2,2,4,4,5,4,2},
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0}
         };
         LoadGridVisual();
 
@@ -117,10 +129,7 @@ public class GameManager : MonoBehaviour
                 if (hitInfo.collider != null)
                 {
                     canClick = false;
-                    StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
-                    {
-                        canClick = true;
-                    }));
+                    
                     
                     GameObject selectedObject = hitInfo.collider.gameObject;
                     
@@ -130,7 +139,7 @@ public class GameManager : MonoBehaviour
                     int i = 0;
                     int j = (int)x; //cot
                     
-                    for (int k = 0; k <rows; k++)
+                    for (int k = 0; k <16; k++)
                     {
                         if (grid[k, j] != 0)
                         {
@@ -138,17 +147,36 @@ public class GameManager : MonoBehaviour
                             break;
                         }
                     }
-
-                    if (!IsChain)
+                    if (i != 0)
                     {
-                        DragBlocks(i , j);
-                        IsChain = true;
+                        if (!IsChain)
+                        {
+                            DragBlocks(i , j);
+                            IsChain = true;
+                        }
+                        else
+                        {
+                            DropBlocks(i, j);
+                            IsChain = false;
+                        }
                     }
                     else
                     {
-                        DropBlocks(i, j);
-                        IsChain = false;
+                        if (IsChain)
+                        {
+                            {
+                                DropBlocks(i, j);
+                                IsChain = false;
+                            }
+                        }
+                        else
+                        {
+                            canClick = true;
+                        }
+                       
                     }
+
+                   
                     
                 }
             }
@@ -157,6 +185,8 @@ public class GameManager : MonoBehaviour
 
     private int _numberDragBlocks = 0;
     private int _columDragId = 0;
+    private int _rowCountPushDown = 0;
+    private int _eatBlockInThisDrop = 0;
     void DragBlocks(int i, int j)
     {
         List<int> listIndexRows = new List<int>();
@@ -184,6 +214,10 @@ public class GameManager : MonoBehaviour
             MoveBlock(j, currentRow, targetRow);
             
         }
+        StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
+        {
+            canClick = true;
+        }));
 
     }
 
@@ -192,26 +226,86 @@ public class GameManager : MonoBehaviour
     {
         if (j != _columDragId)
         {
+            //bool needPushDown = PushDow();
             int curentChainBlocks = 0;
             List<GameObject> dragObject = new List<GameObject>();
+            bool needPushDown = PushDown(j);
+            Debug.Log("needPushDown" + needPushDown);
             // i là dòng đầu tiền 
-            for (int k = i - _numberDragBlocks; k < i ; k++)
-            {
-                var targetRow = k;
-                var currentRow = curentChainBlocks;
-                
-                 MoveBlock(j, currentRow, targetRow, ref dragObject);
-                 curentChainBlocks++;
-            }
-            StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
-            {
-                CheckListContainsInList(dragObject);
             
-                CreateGruopBlocks(false);
-            }));
+            if (!needPushDown)
+            {
+                for (int k = i - _numberDragBlocks; k < i ; k++)
+                {
+                    var targetRow = k;
+                    var currentRow = curentChainBlocks;
+                
+                    MoveBlock(j, currentRow, targetRow, ref dragObject,_rowCountPushDown);
+                    curentChainBlocks++;
+                }
+                StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
+                {
+                    CheckListContainsInList(dragObject); // kiểm tra xem khối đang kéo đang thuộc vào khối nào, sau đó chia lại khối đó
+            
+                    CreateGruopBlocks(false);
+                    
+                    StartCoroutine((timeMove *_eatBlockInThisDrop + 0.05f).DelayedAction(() =>
+                    {
+                        canClick = true;
+                    }));
+                }));
+            }
+            else
+            {
+                for (int k = i - _numberDragBlocks; k < i ; k++)
+                {
+                    var targetRow = k;
+                    var currentRow = curentChainBlocks;
+                
+                    MoveBlock(j, currentRow + _rowCountPushDown, targetRow  + _rowCountPushDown, ref dragObject,_rowCountPushDown);
+                    curentChainBlocks++;
+                }
+                //CreateGruopBlocks(true);
+                
+                StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
+                {
+                    for (int k = 0; k < rows; k++)
+                    {
+                        for (int l = 0; l < columns; l++)
+                        {
+                            UpdatePositionOfGameobjectInGirdObject(k,l);
+                        }
+                    }
+                   
+                    
+                       
+                    StartCoroutine((timeMove  + 0.05f).DelayedAction(() =>
+                    {
+                        CheckListContainsInList(dragObject); // kiểm tra xem khối đang kéo đang thuộc vào khối nào, sau đó chia lại khối đó
+                
+                        CreateGruopBlocks(false);
+
+                        if (_eatBlockInThisDrop == 0)
+                        {
+                            
+                        }
+                        
+                        StartCoroutine((timeMove * _eatBlockInThisDrop + 0.05f).DelayedAction(() =>
+                        {
+                            canClick = true;
+                        }));
+                        
+                    }));
+                    
+                }));
+             
+            }
+            
+           
         }
         else
         {
+            Debug.Log(12020);
             int curentChainBlocks = 0;
 
             for (int k = _numberDragBlocks; k < rows; k++)
@@ -230,18 +324,85 @@ public class GameManager : MonoBehaviour
                 curentChainBlocks++;
                 //ChangeTileColor(k,j);
             }
+            StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
+            {
+                canClick = true;
+            }));
         }
-        
-        
         ClearDataAfterDrop();
-        
-       
     }
+
+   bool PushDown(int columnId)
+   {
+       int result = FindHighestRow(columnId);
+       int highestRowAfterDrop = FindHighestRow(columnId) - _numberDragBlocks;
+       
+       if (highestRowAfterDrop < 5)
+       {
+           PushDownTheRowBelow(highestRowAfterDrop);
+           return true;
+       }
+
+       return false;
+   }
+   void PushDownTheRowBelow(int highestRowAfterDrop)
+   {
+       var rowCountPushDown = 5 - highestRowAfterDrop;
+       _rowCountPushDown = rowCountPushDown;
+       Debug.Log("rowCountPushDown  " +rowCountPushDown);
+       for (int i = rows - 1; i >=  rows - rowCountPushDown; i--)
+       {
+           for (int j = 0; j < columns; j++)
+           {
+               Destroy(gridObject[i, j].gameObject);
+           }
+       }
+       for (int i = rows - 1; i >= 0 + rowCountPushDown; i--)
+       {
+           for (int j = 0; j < columns; j++)
+           {
+               grid[i, j] = grid[i - rowCountPushDown, j];
+               
+               gridObject[i, j] = gridObject[i - rowCountPushDown, j];
+               
+           }
+       }
+       for (int i = 0 + rowCountPushDown - 1; i >= 0 ; i--)
+       {
+           for (int j = 0; j < columns; j++)
+           {
+               grid[i, j] = 0;
+               
+               var tile = Instantiate(quad, new Vector3(j, rows - i, 0), Quaternion.identity);
+               gridObject[i, j] = tile;
+               tile.transform.SetParent(gameObject.transform);
+                    
+               ChangeTileColor(i,j);
+               
+           }
+       }
+       CreateGruopBlocks(true);
+   }
+   int FindHighestRow(int columnId)
+   {
+       int highestRow = 0;
+       for (int i = 0; i < rows; i++)
+       {
+           if (grid[i, columnId] != 0 && columnId != _columDragId)
+           {
+               highestRow = i;
+               return highestRow;
+           }
+       }
+       return highestRow;
+   }
 
     public void ClearDataAfterDrop()
     {
         _numberDragBlocks = 0;
         _columDragId = 0;
+        _rowCountPushDown = 0;
+        _eatBlockInThisDrop = 0;
     }
     void MoveBlock(int column,int currentRow, int targetRow)
     {
@@ -256,7 +417,7 @@ public class GameManager : MonoBehaviour
         UpdatePositionOfGameobjectInGirdObject(currentRow, column);
         
     }
-    void MoveBlock(int column,int currentRow, int targetRow, ref List<GameObject> dragObject)
+    void MoveBlock(int column,int currentRow, int targetRow, ref List<GameObject> dragObject, int number)
     {
         GameObject objectTemp = gridObject[targetRow, column];
         //dragObject.Add(objectTemp);
@@ -266,7 +427,7 @@ public class GameManager : MonoBehaviour
         
         dragObject.Add(gridObject[targetRow, column]);
         
-        UpdatePositionOfGameobjectInGirdObject(targetRow, column , true);
+        UpdatePositionOfGameobjectInGirdObject(targetRow, column , number);
             
         grid[currentRow, _columDragId] = 0;
         gridObject[currentRow, _columDragId] = objectTemp;  // vị trí trên ma trận
@@ -304,27 +465,124 @@ public class GameManager : MonoBehaviour
         }
         if (!firstTime && groupID.Count > 1)
         {
+            _eatBlockInThisDrop++;
             PushEmptyPosition(ref groupID);
             
             StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
             {
                 CreateGruopBlocks(false);
             }));
-            
+        }
+        else
+        {
+            PusUp();
         }
     }
 
+    void PusUp()
+    {
+        int result = FindHighestRow();
+        if (result > 5)
+        {
+            PushUpTheRowBelow(result);
+        }
+        
+    }
+
+    int FindHighestRow()
+    {
+        int highestRow = 0;
+        for (int i = 0; i < rows; i++)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                if (grid[i, j] != 0)
+                {
+                    highestRow = i;
+                    return highestRow;
+                }
+            }
+        }
+        return highestRow;
+    }
+
+    void PushUpTheRowBelow(int highestRow)
+    {
+        var rowCountPushUp = highestRow - 5;
+        for (int i = highestRow; i < rows; i++)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                grid[i - rowCountPushUp , j] = grid[i, j];
+                gridObject[i - rowCountPushUp , j]  = gridObject[i, j];
+                UpdatePositionOfGameobjectInGirdObject(i - rowCountPushUp, j);
+            }
+        }
+        for (int i = rows - rowCountPushUp; i < rows; i++)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                grid[i, j] = 0;
+                var tile = Instantiate(quad, new Vector3(j, rows - i, 0), Quaternion.identity);
+                gridObject[i, j] = tile;
+                tile.transform.SetParent(gameObject.transform);
+                    
+                ChangeTileColor(i,j);
+            }
+        }
+
+        if (FindLastRow() < 30)
+        {
+            for (int i = 30 - rowCountPushUp; i < 30; i++)
+            {
+                for (int j = 0; j < columns; j++)
+                {
+                    grid[i, j] = Random.Range(2, 6);
+                    Destroy(gridObject[i, j].gameObject);
+                    
+                    var tile = Instantiate(quad, new Vector3(j, rows - i, 0), Quaternion.identity);
+                    gridObject[i, j] = tile;
+                    tile.transform.SetParent(gameObject.transform);
+                        
+                    ChangeTileColor(i,j);
+                }
+            }
+        }
+
+        
+        CreateGruopBlocks(true);
+    }
+    int FindLastRow()
+    {
+        int lastRow = 0;
+        for (int i = rows -1; i >=0; i--)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                if (grid[i, j] != 0)
+                {
+                    lastRow = i;
+                    return lastRow;
+                }
+            }
+        }
+        return lastRow;
+    }
+    
     void FindGroupWithEachID (int id, ref int[,] clonedMatrix, bool firstTime ,  ref List<int> groupID)
     {
         List<GameObject> groupObject = new List<GameObject>();
+
+        int lastRowToCheck = 16; // dòng cuối cùng còn nằm trong màn hình
         
-        for (int i = 0; i < rows; i++)
+        for (int i = 0; i < lastRowToCheck; i++) // for (int i = 0; i < rows; i++)
         {
             for (int j = 0; j < columns; j++)
             {
                 if (clonedMatrix[i, j] == id)
                 {
-                    FindGroup_Loop(id, ref clonedMatrix, i, j , ref groupObject);
+                    FindGroup_Loop(id, ref clonedMatrix, i, j , ref groupObject , lastRowToCheck);
+                    
                     for (int l = 0; l < groupObject.Count; l++)
                     {
                         newListOfLists[numberGruopBlocks].Add(groupObject[l]);
@@ -448,11 +706,9 @@ public class GameManager : MonoBehaviour
             gridObject[i, j].transform.position
             , new Vector3(j, rows - i, 0)));
     }
-    public void UpdatePositionOfGameobjectInGirdObject(int i, int j, bool isDrop)
+    public void UpdatePositionOfGameobjectInGirdObject(int i, int j, int number)
     {
         //gridObject[i, j].transform.position = new Vector3(j, rows - i, 0);
-        if (isDrop)
-        {
             StartCoroutine(0.1f.Tweeng((p) => gridObject[i, j].transform.position = p, 
                 gridObject[i, j].transform.position
                 , new Vector3(j, gridObject[i, j].transform.position.y, 0)));
@@ -461,9 +717,8 @@ public class GameManager : MonoBehaviour
             {
                  StartCoroutine((timeMove - 0.1f).Tweeng((p) => gridObject[i, j].transform.position = p, 
                      gridObject[i, j].transform.position
-                     , new Vector3(gridObject[i, j].transform.position.x, rows - i , 0)));
+                     , new Vector3(gridObject[i, j].transform.position.x, rows - i +number, 0)));
             }));
-        }
         
     }
 
@@ -511,7 +766,7 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    void FindGroup_Loop(int k, ref int[,] clonedMatrix , int i, int j ,  ref List<GameObject> test )
+    void FindGroup_Loop(int k, ref int[,] clonedMatrix , int i, int j ,  ref List<GameObject> test , int lastRowToCheck )
     {
         List<int> id = new List<int>();
         
@@ -530,7 +785,7 @@ public class GameManager : MonoBehaviour
                 int neighborY = j + y;
 
                 // Kiểm tra xem vị trí của hàng xóm có hợp lệ không
-                if (neighborX >= 0 && neighborX < rows && neighborY >= 0 && neighborY < columns && (x == 0 || y == 0))
+                if (neighborX >= 0 && neighborX < lastRowToCheck && neighborY >= 0 && neighborY < columns && (x == 0 || y == 0)) // if (neighborX >= 0 && neighborX < rows && neighborY >= 0 && neighborY < columns && (x == 0 || y == 0))
                 {
                     // Loại trừ trường hợp là phần tử chính nó
                     if (!(x == 0 && y == 0))
@@ -551,7 +806,7 @@ public class GameManager : MonoBehaviour
         // }
         for (int l = 0; l < id.Count; l += 2)
         {
-            FindGroup_Loop(k, ref clonedMatrix, id[l], id[l + 1], ref test);
+            FindGroup_Loop(k, ref clonedMatrix, id[l], id[l + 1], ref test, lastRowToCheck);
         }
         
     }
