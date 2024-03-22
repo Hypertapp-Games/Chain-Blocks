@@ -183,6 +183,7 @@ public class IIDAssetGameManager : MonoBehaviour
     private int _columDragId = 0;
     private int _rowCountPushDown = 0;
     private int _eatBlockInThisDrop = 0;
+    private float timeDelayToClaimBlock = 0;
 
     List<int> LongOfTheChain(int i, int j)
     {
@@ -254,7 +255,7 @@ public class IIDAssetGameManager : MonoBehaviour
             
                     CreateGruopBlocks(false);
                     
-                    StartCoroutine((timeMove *_eatBlockInThisDrop + 0.05f).DelayedAction(() =>
+                    StartCoroutine((timeMove *_eatBlockInThisDrop + timeDelayToClaimBlock + 0.05f).DelayedAction(() =>
                     {
                         canClick = true;
                     }));
@@ -290,13 +291,8 @@ public class IIDAssetGameManager : MonoBehaviour
                         CheckListContainsInList(dragObject); // kiểm tra xem khối đang kéo đang thuộc vào khối nào, sau đó chia lại khối đó
                 
                         CreateGruopBlocks(false);
-                
-                        if (_eatBlockInThisDrop == 0)
-                        {
-                            
-                        }
                         
-                        StartCoroutine((timeMove * _eatBlockInThisDrop + 0.05f).DelayedAction(() =>
+                        StartCoroutine((timeMove * _eatBlockInThisDrop  + timeDelayToClaimBlock+ 0.05f).DelayedAction(() =>
                         {
                             canClick = true;
                         }));
@@ -411,6 +407,7 @@ public class IIDAssetGameManager : MonoBehaviour
         _columDragId = 0;
         _rowCountPushDown = 0;
         _eatBlockInThisDrop = 0;
+        timeDelayToClaimBlock = 0;
     }
     void MoveBlock(int column,int currentRow, int targetRow, bool drag)
     {
@@ -475,20 +472,27 @@ public class IIDAssetGameManager : MonoBehaviour
         int[,] clonedMatrix = CloneMatrix(grid);
         
         List<int> groupID = new List<int>();
+        List<GameObject> groupBlockDestroy = new List<GameObject>();
         
         for (int i = 2; i < 10; i++)
         {
-            FindGroupWithEachID(i, ref clonedMatrix , firstTime, ref groupID);
+            FindGroupWithEachID(i, ref clonedMatrix , firstTime, ref groupID , ref groupBlockDestroy);
         }
         if (!firstTime && groupID.Count > 1)
         {
             _eatBlockInThisDrop++;
-            PushEmptyPosition(ref groupID);
-            
-            StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
+            var timeDelay = DestroyClaimBlock(groupBlockDestroy);
+            timeDelayToClaimBlock += timeDelay;
+            StartCoroutine((timeDelay).DelayedAction(() =>
             {
-                CreateGruopBlocks(false);
+                PushEmptyPosition(ref groupID);
+            
+                StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
+                {
+                    CreateGruopBlocks(false);
+                }));
             }));
+            
         }
         else
         {
@@ -621,7 +625,7 @@ public class IIDAssetGameManager : MonoBehaviour
         return lastRow;
     }
     
-    void FindGroupWithEachID (int id, ref int[,] clonedMatrix, bool firstTime ,  ref List<int> groupID)
+    void FindGroupWithEachID (int id, ref int[,] clonedMatrix, bool firstTime ,  ref List<int> groupID, ref  List<GameObject> groupBlockDestroy )
     {
         List<GameObject> groupObject = new List<GameObject>();
 
@@ -656,13 +660,14 @@ public class IIDAssetGameManager : MonoBehaviour
                         }
                         foreach (GameObject gameObject in newListOfLists[numberGruopBlocks])
                         {
-                            StartCoroutine(timeMove.Tweeng((s) => gameObject.transform.localScale = s,
-                                gameObject.transform.localScale, 
-                                new Vector3(0, 0, 0)));
-                            StartCoroutine(timeMove.Tweeng((p) => gameObject.transform.position = p,
-                                gameObject.transform.position, 
-                                gameObject.transform.GetChild(1).localToWorldMatrix.GetPosition()));
-                            Destroy(gameObject, timeMove + 0.05f); // Hủy bỏ GameObject
+                            groupBlockDestroy.Add(gameObject);
+                            // StartCoroutine(timeMove.Tweeng((s) => gameObject.transform.localScale = s,
+                            //     gameObject.transform.localScale, 
+                            //     new Vector3(0, 0, 0)));
+                            // StartCoroutine(timeMove.Tweeng((p) => gameObject.transform.position = p,
+                            //     gameObject.transform.position, 
+                            //     gameObject.transform.GetChild(1).localToWorldMatrix.GetPosition()));
+                            // Destroy(gameObject, timeMove + 0.05f); // Hủy bỏ GameObject
                         }
                         newListOfLists[numberGruopBlocks].Clear();
                     }
@@ -675,6 +680,75 @@ public class IIDAssetGameManager : MonoBehaviour
         
     }
 
+    // Tạo danh sách trống để lưu những list chứa group block để so sánh chúng với nhau
+    float DestroyClaimBlock( List<GameObject> groupBlockDestroy)
+    {
+        List<List<GameObject>> destroyList = SplitListByX(groupBlockDestroy);
+        
+        // Duyệt qua từng danh sách con trong splitList và xóa chúng
+        float timeDelay = 0;
+        // foreach (List<GameObject> sublist in destroyList)
+        // {
+        //     Debug.Log("Objects with y = " + sublist[0].GetComponent<SavePosition>().pos.y + ":");
+        //     foreach (GameObject obj in sublist)
+        //     {
+        //         Debug.Log(obj.name);
+        //     }
+        // }
+        foreach (var sublist in destroyList)
+        {
+            foreach (var block in sublist)
+            {
+                StartCoroutine((timeDelay).DelayedAction(() =>
+                {
+                    StartCoroutine(0.2f.Tweeng((s) => block.transform.localScale = s,
+                        block.transform.localScale, 
+                        new Vector3(0, 0, 0)));
+                    StartCoroutine(0.2f.Tweeng((p) => block.transform.position = p,
+                        block.transform.position, 
+                        block.transform.GetChild(1).localToWorldMatrix.GetPosition()));
+                    Destroy(block, timeMove + 0.01f); // Hủy bỏ GameObject
+                }));
+            }
+            timeDelay += 0.1f;
+        }
+
+        return timeDelay;
+
+    }
+    public List<List<GameObject>> SplitListByX(List<GameObject> list)
+    {
+        List<List<GameObject>> result = new List<List<GameObject>>();
+        List<float> listY = new List<float>();
+        foreach (GameObject obj in list)
+        {
+            float objY = obj.GetComponent<SavePosition>().pos.y;
+            if (!listY.Contains(objY))
+            {
+                listY.Add(objY);
+            }
+        }
+        listY.Sort((a, b) => b.CompareTo(a));
+        for (int i = 0; i < listY.Count; i++)
+        {
+            Debug.Log(" SortList " + i + "  " +listY[i]);
+        }
+        foreach (float y in listY)
+        {
+            List<GameObject> sublist = new List<GameObject>();
+            foreach (GameObject obj in list)
+            {
+                float objY = obj.GetComponent<SavePosition>().pos.y;
+                if (objY == y)
+                {
+                    sublist.Add(obj);
+                }
+            }
+            result.Add(sublist);
+        }
+
+        return result;
+    }
     
    void PushEmptyPosition(ref List<int> testID)
     {
