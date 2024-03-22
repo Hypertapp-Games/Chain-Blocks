@@ -526,13 +526,22 @@ public class IIDAssetGameManager : MonoBehaviour
     void PushUpTheRowBelow(int highestRow)
     {
         var rowCountPushUp = highestRow - 4;
-        for (int i = highestRow; i < rows; i++)
+        for (int i = rowCountPushUp - 1; i >= 0; i--)
         {
             for (int j = 0; j < columns; j++)
             {
-                grid[i - rowCountPushUp , j] = grid[i, j];
-                gridObject[i - rowCountPushUp , j]  = gridObject[i, j];
-                UpdatePositionOfGameobjectInGirdObject(i - rowCountPushUp, j);
+                Destroy(gridObject[i,j]);
+            }
+            
+        }
+        for (int i = 0; i < rows - rowCountPushUp; i++)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                grid[i, j] = grid[i + rowCountPushUp, j];
+                gridObject[i, j] = gridObject[i + rowCountPushUp , j]  ;
+                
+                UpdatePositionOfGameobjectInGirdObject(i, j);
             }
         }
         for (int i = rows - rowCountPushUp; i < rows; i++)
@@ -548,23 +557,49 @@ public class IIDAssetGameManager : MonoBehaviour
             }
         }
 
-        if (FindLastRow() < 19)
+        var lowestRow = 0;
+        for (int i = rows - 1; i >= 0; i--)
         {
-            for (int i = 19 - rowCountPushUp ; i < 19; i++)
+            if (grid[i, 0] != 0)
+            {
+                lowestRow = i ;  
+                break;
+            }
+        }
+        
+        Debug.Log("highestRow  " + highestRow + "  lowestRow  " + lowestRow + "  rowCountPushUp  " + rowCountPushUp ) ;
+        var numberRowHaveBlock = (lowestRow + rowCountPushUp) - highestRow + 1;
+        if (numberRowHaveBlock < 15)
+        {
+            var numberRowNeedInstance = 15 - numberRowHaveBlock;
+            for (int i = lowestRow + 1; i <= lowestRow + numberRowNeedInstance; i++)
             {
                 for (int j = 0; j < columns; j++)
                 {
                     grid[i, j] = Random.Range(2, 6);
-                    Destroy(gridObject[i, j].gameObject);
-                    
-                    var tile = Instantiate(quad, new Vector3(j, rows - i - rowCountPushUp, 0), Quaternion.identity);
-                    gridObject[i, j] = tile;
-                    tile.transform.SetParent(gameObject.transform);
-                        
                     ChangeTileColor(i,j);
+                    
                 }
             }
         }
+
+        // if (FindLastRow() < 19)
+        // {
+        //     for (int i = 19 - rowCountPushUp ; i < 19; i++)
+        //     {
+        //         for (int j = 0; j < columns; j++)
+        //         {
+        //             grid[i, j] = Random.Range(2, 6);
+        //             Destroy(gridObject[i, j].gameObject);
+        //             
+        //             var tile = Instantiate(quad, new Vector3(j, rows - i - rowCountPushUp, 0), Quaternion.identity);
+        //             gridObject[i, j] = tile;
+        //             tile.transform.SetParent(gameObject.transform);
+        //                 
+        //             ChangeTileColor(i,j);
+        //         }
+        //     }
+        // }
 
         
         CreateGruopBlocks(true);
@@ -1108,6 +1143,7 @@ public class IIDAssetGameManager : MonoBehaviour
         }
         else
         {
+            rend.enabled = true;
             var sprite = Sprites[grid[i,j] - 2];
             rend.sprite = sprite;
         }
