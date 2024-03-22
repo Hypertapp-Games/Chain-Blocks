@@ -249,6 +249,7 @@ public class IIDAssetGameManager : MonoBehaviour
                     MoveBlock(j, currentRow, targetRow, ref dragObject,_rowCountPushDown);
                     curentChainBlocks++;
                 }
+                ShakeGenhtyColDrop(j);
                 StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
                 {
                     CheckListContainsInList(dragObject); // kiểm tra xem khối đang kéo đang thuộc vào khối nào, sau đó chia lại khối đó
@@ -272,6 +273,7 @@ public class IIDAssetGameManager : MonoBehaviour
                      MoveBlock(j, currentRow + _rowCountPushDown, targetRow  + _rowCountPushDown, ref dragObject,_rowCountPushDown);
                      curentChainBlocks++;
                  }
+                 ShakeGenhtyColDrop(j);
                 //CreateGruopBlocks(true);
                 //Debug.Log("_rowCountPushDown" + _rowCountPushDown);
                 StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
@@ -327,6 +329,9 @@ public class IIDAssetGameManager : MonoBehaviour
                 curentChainBlocks--;
                 //ChangeTileColor(k,j);
             }
+
+            ShakeGenhtyColDrop(j);
+
             StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
             {
                 canClick = true;
@@ -334,6 +339,21 @@ public class IIDAssetGameManager : MonoBehaviour
         }
         ClearDataAfterDrop();
     }
+
+   void ShakeGenhtyColDrop(int col)
+   {
+       StartCoroutine((timeMove ).DelayedAction(() =>
+       {
+           for (int i = 0; i < rows; i++)
+           {
+               var obj = gridObject[i, col];
+               if (obj.GetComponent<SpriteRenderer>().enabled == true)
+               {
+                   obj.transform.GetChild(0).transform.localPosition -= new Vector3(0, 0.2f, 0);
+               }
+           }
+       }));
+   }
 
    bool PushDown(int columnId)
    {
