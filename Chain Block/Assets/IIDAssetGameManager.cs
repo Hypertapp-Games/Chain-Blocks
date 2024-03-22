@@ -44,7 +44,7 @@ public class IIDAssetGameManager : MonoBehaviour
         
         CreateList();
         //grid = LoadArrayFromFile(path);
-        grid = new int[40, 7] {
+        grid = new int[30, 7] {
             {0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0},
@@ -64,16 +64,6 @@ public class IIDAssetGameManager : MonoBehaviour
             {2,4,2,3,4,5,3},
             {3,5,4,5,2,4,3},
             {3,5,3,5,2,5,5},
-            {5,2,5,3,5,3,2},
-            {5,2,2,3,2,3,2},
-            {3,3,5,5,2,3,2},
-            {5,5,4,3,3,5,5},
-            {2,2,2,3,4,2,3},
-            {3,3,4,3,4,2,3},
-            {4,2,5,3,5,5,4},
-            {4,2,4,2,2,4,5},
-            {2,3,3,3,2,5,2},
-            {2,2,4,4,5,4,2},
             {0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0},
             {0,0,0,0,0,0,0},
@@ -89,6 +79,8 @@ public class IIDAssetGameManager : MonoBehaviour
         LoadGridVisual();
 
         CreateGruopBlocks(true);
+        //SelectedBlocked();
+        _chain.MouseUP += SelectedBlocked;
     }
 
     public void Replay()
@@ -100,9 +92,10 @@ public class IIDAssetGameManager : MonoBehaviour
 
  
     private bool isDrag = false;
+    public Chain _chain;
     public  void Update()
     {
-        SelectedBlocked();
+        //SelectedBlocked();
 
         if (Input.GetKeyDown(KeyCode.E))
         {
@@ -113,79 +106,76 @@ public class IIDAssetGameManager : MonoBehaviour
     public bool canClick = true;
     void SelectedBlocked()
     {
+        Debug.Log("ONclick");
+        canClick = false;
+        
         // Kiểm tra xem người dùng nhấn chuột trái
-        if (Input.GetMouseButtonDown(0) && canClick)
+        
+        int row = 0;
+        int col = (int)(_chain.gameObject.transform.position.x + 0.5f);
+        Debug.Log("Cot" + col);
+               
+        for (int k = 0; k <15; k++)
         {
-            // Tạo ra một ray từ vị trí chuột
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            RaycastHit hitInfo;
-
-            // Thực hiện raycast
-            if (Physics.Raycast(ray, out hitInfo))
+            if (grid[k, col] != 0)
             {
-                // Kiểm tra xem đối tượng được chọn có thuộc loại đối tượng mong muốn
-                if (hitInfo.collider != null)
+                row = k; // hang
+                break;
+            }
+        }
+        if (row != 0)
+        {
+            if (!IsChain)
+            {
+                List<int> listIndexRows = LongOfTheChain(row, col);
+                //DragBlocks(listIndexRows, col);
+                
+                var longOfTheChain = row + listIndexRows.Count + 1;
+                
+                var chainPos = _chain.transform.GetChild(0).transform.position;
+                StartCoroutine(0.2f.Tweeng((p) =>  _chain.transform.GetChild(0).transform.position = p, 
+                    chainPos
+                    , new Vector3(chainPos.x, chainPos.y - longOfTheChain, chainPos.z)));
+                StartCoroutine(0.25f.DelayedAction(() =>
                 {
-                    canClick = false;
+                    DragBlocks(listIndexRows , col); // kiểm tra xem khối đang kéo đang thuộc vào khối nào, sau đó chia lại khối đó
                     
-                    
-                    GameObject selectedObject = hitInfo.collider.gameObject;
-                    
-                    float x = selectedObject.transform.position.x;
-                    float y = selectedObject.transform.position.y;
-
-                    int i = 0;
-                    int j = (int)x; //cot
-                    
-                    for (int k = 0; k <15; k++)
+                    chainPos =  _chain.transform.GetChild(0).transform.position;
+                    StartCoroutine(timeMove.Tweeng((p) =>  _chain.transform.GetChild(0).transform.position = p, 
+                        chainPos
+                        , new Vector3(chainPos.x, chainPos.y + longOfTheChain, chainPos.z)));
+                }));
+               
+                IsChain = true;
+            }
+            else
+            {
+                DropBlocks(row, col);
+                IsChain = false;
+            }
+        }
+        else
+        {
+            if (IsChain)
+            {
+                {
+                    for (int k = 0; k < 19; k++)
                     {
-                        if (grid[k, j] != 0)
+                        if (grid[k, col] != 0)
                         {
-                            i = k; // hang
+                            row = k; // hang
                             break;
                         }
                     }
-                    if (i != 0)
-                    {
-                        if (!IsChain)
-                        {
-                            DragBlocks(i , j);
-                            IsChain = true;
-                        }
-                        else
-                        {
-                            DropBlocks(i, j);
-                            IsChain = false;
-                        }
-                    }
-                    else
-                    {
-                        if (IsChain)
-                        {
-                            {
-                                for (int k = 0; k < 29; k++)
-                                {
-                                    if (grid[k, j] != 0)
-                                    {
-                                        i = k; // hang
-                                        break;
-                                    }
-                                }
-                                DropBlocks(i, j);
-                                IsChain = false;
-                            }
-                        }
-                        else
-                        {
-                            canClick = true;
-                        }
-                       
-                    }
-
-                   
-                    
+                    DropBlocks(row, col);
+                    IsChain = false;
                 }
             }
+            else
+            {
+                canClick = true;
+            }
+                       
         }
     }
 
@@ -193,10 +183,12 @@ public class IIDAssetGameManager : MonoBehaviour
     private int _columDragId = 0;
     private int _rowCountPushDown = 0;
     private int _eatBlockInThisDrop = 0;
-    void DragBlocks(int i, int j)
+
+    List<int> LongOfTheChain(int i, int j)
     {
         List<int> listIndexRows = new List<int>();
         listIndexRows.Add(i);
+        _chain.dragBlocksList.Add(gridObject[i,j]);
         _columDragId = j;
         
         for (int k = i + 1; k < 15; k++)
@@ -204,20 +196,25 @@ public class IIDAssetGameManager : MonoBehaviour
             if (grid[k, j] == grid[i, j])
             {
                 listIndexRows.Add(k);
+                _chain.dragBlocksList.Add(gridObject[k,j]);
             }
             else
             {
-               break;
+                break;
             }
         }
 
         _numberDragBlocks = listIndexRows.Count;
-        
+        return listIndexRows;
+    }
+    void DragBlocks(List<int>listIndexRows , int col)
+    {
+       
         for (int k = 0; k < listIndexRows.Count; k++)
         {
             var targetRow = k;
             var currentRow = listIndexRows[k];
-            MoveBlock(j, currentRow, targetRow,true);
+            MoveBlock(col, currentRow, targetRow,true);
             
         }
         StartCoroutine((timeMove + 0.05f).DelayedAction(() =>
@@ -551,16 +548,16 @@ public class IIDAssetGameManager : MonoBehaviour
             }
         }
 
-        if (FindLastRow() < 29)
+        if (FindLastRow() < 19)
         {
-            for (int i = 29 - rowCountPushUp ; i < 29; i++)
+            for (int i = 19 - rowCountPushUp ; i < 19; i++)
             {
                 for (int j = 0; j < columns; j++)
                 {
                     grid[i, j] = Random.Range(2, 6);
                     Destroy(gridObject[i, j].gameObject);
                     
-                    var tile = Instantiate(quad, new Vector3(j, rows - i, 0), Quaternion.identity);
+                    var tile = Instantiate(quad, new Vector3(j, rows - i - rowCountPushUp, 0), Quaternion.identity);
                     gridObject[i, j] = tile;
                     tile.transform.SetParent(gameObject.transform);
                         
@@ -612,8 +609,9 @@ public class IIDAssetGameManager : MonoBehaviour
                     {
                         for (int l = 0; l < groupObject.Count; l++)
                         {
-                            float x = groupObject[l].transform.position.x;
-                            float y = groupObject[l].transform.position.y;
+                            var savePos = groupObject[l].GetComponent<SavePosition>();
+                            float x = savePos.pos.x;
+                            float y = savePos.pos.y;
                             
                             int gridX = rows - (int)y;
                             groupID.Add(gridX); // i
@@ -626,6 +624,9 @@ public class IIDAssetGameManager : MonoBehaviour
                             StartCoroutine(timeMove.Tweeng((s) => gameObject.transform.localScale = s,
                                 gameObject.transform.localScale, 
                                 new Vector3(0, 0, 0)));
+                            StartCoroutine(timeMove.Tweeng((p) => gameObject.transform.position = p,
+                                gameObject.transform.position, 
+                                gameObject.transform.GetChild(1).localToWorldMatrix.GetPosition()));
                             Destroy(gameObject, timeMove + 0.05f); // Hủy bỏ GameObject
                         }
                         newListOfLists[numberGruopBlocks].Clear();
@@ -720,32 +721,71 @@ public class IIDAssetGameManager : MonoBehaviour
 
     public void UpdatePositionOfGameobjectInGirdObject(int i, int j, int luilai, bool drag)
     {
+        GameObject obj = gridObject[i, j];
+        Transform root = obj.transform.GetChild(1);
+        var savePos = obj.GetComponent<SavePosition>();
+        
+        var change = new Vector3(j, rows - i + luilai, 0) - savePos.pos;
+        savePos.pos = new Vector3(j, rows - i + luilai, 0);
+        
+        StartCoroutine(timeMove.Tweeng((p) => root.position = p, 
+            root.position
+            , root.position + change));
+        
         //gridObject[i, j].transform.position = new Vector3(j, rows - i, 0);
         
-        StartCoroutine(timeMove.Tweeng((p) => gridObject[i, j].transform.position = p, 
-            gridObject[i, j].transform.position
-            , new Vector3(j, rows - i + luilai, 0)));
+        // StartCoroutine(timeMove.Tweeng((p) => gridObject[i, j].transform.position = p, 
+        //     gridObject[i, j].transform.position
+        //     , new Vector3(j, rows - i + luilai, 0)));
     }
     public void UpdatePositionOfGameobjectInGirdObject(int i, int j)
     {
+        GameObject obj = gridObject[i, j];
+        Transform root = obj.transform.GetChild(1);
+        var savePos = obj.GetComponent<SavePosition>();
+        
+        var change = new Vector3(j, rows - i , 0) - savePos.pos;
+        savePos.pos = new Vector3(j, rows - i , 0);
+        
+        StartCoroutine(timeMove.Tweeng((p) => root.position = p, 
+            root.position
+            , root.position + change));
         //gridObject[i, j].transform.position = new Vector3(j, rows - i, 0);
         
-        StartCoroutine(timeMove.Tweeng((p) => gridObject[i, j].transform.position = p, 
-            gridObject[i, j].transform.position
-            , new Vector3(j, rows - i, 0)));
+        // StartCoroutine(timeMove.Tweeng((p) => gridObject[i, j].transform.position = p, 
+        //     gridObject[i, j].transform.position
+        //     , new Vector3(j, rows - i, 0)));
     }
     public void UpdatePositionOfGameobjectInGirdObject(int i, int j, int number)
     {
+        GameObject obj = gridObject[i, j];
+        Transform root = obj.transform.GetChild(1);
+        var savePos = obj.GetComponent<SavePosition>();
+        
+        var change = new Vector3(j, savePos.pos.y, 0) - savePos.pos;
+        float changex = j - savePos.pos.x;
+        savePos.pos = new Vector3(j, savePos.pos.y, 0);
+        
+        // StartCoroutine(0.1f.Tweeng((p) => gridObject[i,j].transform.position = p, 
+        //     gridObject[i,j].transform.position
+        //     , new Vector3(gridObject[i,j].transform.position.x + changex, gridObject[i,j].transform.position.y,0)));
+        
         //gridObject[i, j].transform.position = new Vector3(j, rows - i, 0);
-            StartCoroutine(0.1f.Tweeng((p) => gridObject[i, j].transform.position = p, 
-                gridObject[i, j].transform.position
-                , new Vector3(j, gridObject[i, j].transform.position.y, 0)));
+            // StartCoroutine(0.1f.Tweeng((p) => gridObject[i, j].transform.position = p, 
+            //     gridObject[i, j].transform.position
+            //     , new Vector3(j, gridObject[i, j].transform.position.y, 0)));
+            
+            change = new Vector3(savePos.pos.x, rows - i +number, 0) - savePos.pos;
+            savePos.pos =  new Vector3(savePos.pos.x, rows - i +number, 0);
         
             StartCoroutine((0.1f).DelayedAction(() =>
             {
-                 StartCoroutine((timeMove - 0.1f).Tweeng((p) => gridObject[i, j].transform.position = p, 
-                     gridObject[i, j].transform.position
-                     , new Vector3(gridObject[i, j].transform.position.x, rows - i +number, 0)));
+                StartCoroutine((timeMove - 0.1f).Tweeng((p) => root.position = p, 
+                    root.position
+                    , root.position + change));
+                 // StartCoroutine((timeMove - 0.1f).Tweeng((p) => gridObject[i, j].transform.position = p, 
+                 //     gridObject[i, j].transform.position
+                 //     , new Vector3(gridObject[i, j].transform.position.x, rows - i +number, 0)));
             }));
         
     }
@@ -772,8 +812,9 @@ public class IIDAssetGameManager : MonoBehaviour
         {
             for (int y = -1; y <= 1; y++)
             {
-                int neighborX = (int)firstObject.transform.position.x + x;
-                int neighborY = (int)firstObject.transform.position.y + y;
+                var neighborXPos = firstObject.GetComponent<SavePosition>();
+                int neighborX = (int)neighborXPos.pos.x + x;
+                int neighborY = (int)neighborXPos.pos.y + y;
                 
 
                 // Kiểm tra xem vị trí của hàng xóm có hợp lệ không
@@ -784,8 +825,9 @@ public class IIDAssetGameManager : MonoBehaviour
                     {
                         for (int i = 0; i < origin.Count; i++)
                         {
-                            if (origin[i].transform.position.x == neighborX &&
-                                origin[i].transform.position.y == neighborY)
+                            var originPos = origin[i].GetComponent<SavePosition>();
+                            if (originPos.pos.x == neighborX &&
+                                originPos.pos.y == neighborY)
                             {
                                 keepChecking.Add(origin[i]);
                             }
